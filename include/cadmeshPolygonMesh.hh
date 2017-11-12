@@ -56,7 +56,7 @@ class PolygonMeshFileReader
     PolygonMeshFileReader(G4double unitOfLength = mm, G4bool permuteFacetPoints = false);
 
     // Reads a collection of polygon meshes from a file. Supported file
-    // types are: STL, PLY, OFF, OBJ and SMESH.
+    // types are: SMESH.
     std::vector<PolygonMesh> ReadMeshCollection(const G4String& filePath);
 
     // Similar to ReadMeshCollection(). Returns the first mesh defined.
@@ -69,7 +69,6 @@ class PolygonMeshFileReader
 
   private:
     // implementation specifics
-    std::vector<PolygonMesh> ReadAssimpFileType(const G4String& filePath);
     std::vector<PolygonMesh> ReadSMESH(const G4String& filePath);
 
   private:

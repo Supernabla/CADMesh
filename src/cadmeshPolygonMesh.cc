@@ -40,86 +40,10 @@
 #include <G4VisAttributes.hh>
 #include <G4Colour.hh>
 
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/scene.h>
-#include <assimp/mesh.h>
-
 #include "cadmeshGlobal.hh"
 #include "cadmeshHelpers.hh"
 
 #include "cadmeshPolygonMesh.hh"
-
-
-//****************************************************************************************
-//    Helpers
-//****************************************************************************************
-namespace {
-
-G4int AddFacetsFromAiMesh(const aiMesh* inMesh, G4TessellatedSolid* solid,
-                          G4double unitOfLength, G4bool permuteFacetPoints)
-{
-  if (inMesh == nullptr || solid == nullptr)
-    return 0;
-
-  G4int nFacets = 0;
-  for(unsigned i = 0; i < inMesh->mNumFaces; ++i)
-  {
-    const aiFace& face = inMesh->mFaces[i];
-
-    G4bool success = false;
-    if (face.mNumIndices == 3)
-    {
-      const aiVector3D& v0 = inMesh->mVertices[face.mIndices[0]];
-      const aiVector3D& v1 = inMesh->mVertices[face.mIndices[1]];
-      const aiVector3D& v2 = inMesh->mVertices[face.mIndices[2]];
-  
-      G4ThreeVector p0 = G4ThreeVector(v0.x, v0.y, v0.z) * unitOfLength;
-      G4ThreeVector p1 = G4ThreeVector(v1.x, v1.y, v1.z) * unitOfLength;
-      G4ThreeVector p2 = G4ThreeVector(v2.x, v2.y, v2.z) * unitOfLength;
-      
-      if (permuteFacetPoints == true)
-      {
-        success = solid->AddFacet(new G4TriangularFacet(p0, p2, p1, ABSOLUTE));
-      }
-      else
-      {
-        success = solid->AddFacet(new G4TriangularFacet(p0, p1, p2, ABSOLUTE));
-      }
-    }
-    else if (face.mNumIndices == 4)
-    {
-      const aiVector3D& v0 = inMesh->mVertices[face.mIndices[0]];
-      const aiVector3D& v1 = inMesh->mVertices[face.mIndices[1]];
-      const aiVector3D& v2 = inMesh->mVertices[face.mIndices[2]];
-      const aiVector3D& v3 = inMesh->mVertices[face.mIndices[3]];
-
-      G4ThreeVector p0 = G4ThreeVector(v0.x, v0.y, v0.z) * unitOfLength;
-      G4ThreeVector p1 = G4ThreeVector(v1.x, v1.y, v1.z) * unitOfLength;
-      G4ThreeVector p2 = G4ThreeVector(v2.x, v2.y, v2.z) * unitOfLength;
-      G4ThreeVector p3 = G4ThreeVector(v3.x, v3.y, v3.z) * unitOfLength;
-
-      if (permuteFacetPoints == true)
-      {
-        success = solid->AddFacet(new G4QuadrangularFacet(p0, p3, p2, p1, ABSOLUTE));
-      }
-      else
-      {
-        success = solid->AddFacet(new G4QuadrangularFacet(p0, p1, p2, p3, ABSOLUTE));
-      }
-    }
-    else 
-    {
-      G4String errMsg = "Invalid facet, not tri- or quadrangular.";
-      G4Exception("CADMesh", "INPUT_ERROR", JustWarning, errMsg);
-    }
-    nFacets = success ? (nFacets + 1) : nFacets;
-  }
-
-  return nFacets;
-}
-
-}  // anonymous namespace
 
 
 //****************************************************************************************
@@ -140,12 +64,7 @@ cadmesh::PolygonMeshFileReader::ReadMeshCollection(const G4String& filePath)
   std::vector<PolygonMesh> meshCollection;
 
   const G4String& extension = PathSplitExt(filePath).second;
-  if (extension == ".stl" || extension == ".ply" ||
-      extension == ".off" || extension == ".obj")
-  {
-    meshCollection = ReadAssimpFileType(filePath);
-  }
-  else if (extension == ".smesh")
+  if (extension == ".smesh")
   {
     meshCollection = ReadSMESH(filePath);
   }
@@ -165,67 +84,6 @@ cadmesh::PolygonMeshFileReader::ReadMeshCollection(const G4String& filePath)
 cadmesh::PolygonMesh cadmesh::PolygonMeshFileReader::ReadMesh(const G4String& filePath)
 {
   return ReadMeshCollection(filePath).at(0);
-}
-
-//****************************************************************************************
-
-std::vector<cadmesh::PolygonMesh>
-cadmesh::PolygonMeshFileReader::ReadAssimpFileType(const G4String& filePath)
-{
-  if (GetVerbosityLevel() >= INFO)
-    G4cout << "CADMesh: Reading polygon mesh file '" << filePath << "'..." << G4endl;
-  
-  Assimp::Importer importer;
-  const aiScene* scene = importer.ReadFile(filePath, aiProcess_JoinIdenticalVertices | 
-                                                     aiProcess_ValidateDataStructure);
-
-  if (scene == nullptr)
-  {
-    G4Exception("CADMesh", "INVALID_READ", FatalException, importer.GetErrorString());
-    return std::vector<cadmesh::PolygonMesh>();
-  }
-
-  std::vector<PolygonMesh> meshCollection;
-  for(unsigned i = 0; i < scene->mNumMeshes; ++i)
-  {
-    const aiMesh* inMesh = scene->mMeshes[i];
-    PolygonMesh mesh{nullptr, DEFAULT_SURFACE_MARKER, ""};
-
-    // Note, that the file types read via Assimp do not define a surface marker,
-    // i.e. the polygon mesh will keep the default value.
-
-    // Adopt name, if mesh already has a name. Otherwise, construct from file name.
-    if (inMesh->mName != aiString(""))
-    {
-      mesh.name = inMesh->mName.C_Str();
-    }
-    else
-    {
-      const G4String& fileName = cadmesh::PathSplit(filePath).second;
-      const G4String& root = cadmesh::PathSplitExt(fileName).first;
-      mesh.name = root + "_mesh" + std::to_string(i);
-    }
-
-    // transfer facets to Geant4's respective solid
-    mesh.tessellatedSolid = new G4TessellatedSolid(mesh.name + "_solid");
-    G4int nFacets = AddFacetsFromAiMesh(inMesh, mesh.tessellatedSolid,
-                                        fUnitOfLength, fPermuteFacetPoints);
-    mesh.tessellatedSolid->SetSolidClosed(true);
-
-    // Add to mesh collection
-    meshCollection.push_back(mesh);
-
-    if (GetVerbosityLevel() >= DEBUG)
-    {
-      G4cout << "CADMesh: Obtained mesh '" << mesh.name << "' ";
-      G4cout << "consisting of " << nFacets << " facets." << G4endl;
-    }
-  }
-
-  if (GetVerbosityLevel() >= INFO)
-    G4cout << "CADMesh: ... read " << meshCollection.size() << " meshes." << G4endl;
-
-  return meshCollection;
 }
 
 //****************************************************************************************
