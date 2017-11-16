@@ -291,7 +291,7 @@ cadmesh::TetrahedralMeshFileReader::ReadTetAssemblyVolume(const G4String& filePa
   
   for (const auto& tet : tetrahedra)
   {
-    G4Material* material = G4NistManager::Instance()->FindMaterial("G4_AIR");
+    G4Material* material = G4NistManager::Instance()->FindOrBuildMaterial("G4_AIR");
     G4Colour colour = G4Colour::White();
     
     // find region and set colour and material accordingly
