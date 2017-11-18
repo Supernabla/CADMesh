@@ -283,8 +283,8 @@ cadmesh::PolygonMeshFileReader::ReadSMESH(const G4String& filePath)
   G4String line;
   while (std::getline(smeshFileStream, line))
   {
-    // skip comments
-    if (line.front() == '#')
+    // skip comments & emtpy lines
+    if (line.front() == '#' || line.empty())
       continue;
 
     std::istringstream lineParser(line);
@@ -317,8 +317,8 @@ cadmesh::PolygonMeshFileReader::ReadSMESH(const G4String& filePath)
   std::size_t counter = 0;
   while (std::getline(smeshFileStream, line) && counter < nFacets)
   {
-    // skip comments
-    if (line.front() == '#')
+    // skip comments & emtpy lines
+    if (line.front() == '#' || line.empty())
       continue;
 
     std::istringstream lineParser(line);

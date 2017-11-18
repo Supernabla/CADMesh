@@ -180,8 +180,8 @@ cadmesh::TetrahedralMeshFileReader::ReadELE(const G4String& filePath)
   G4String line;
   while (std::getline(eleFileStream, line))
   {
-    // skip comments
-    if (line.front() == '#')
+    // skip comments & emtpy lines
+    if (line.front() == '#' || line.empty())
       continue;
     
     std::istringstream lineParser(line);
@@ -224,8 +224,8 @@ cadmesh::TetrahedralMeshFileReader::ReadELE(const G4String& filePath)
   std::size_t counter = 0;
   while (std::getline(eleFileStream, line) && counter < nTetrahedra)
   {
-    // skip comments
-    if (line.front() == '#')
+    // skip comments & emtpy lines
+    if (line.front() == '#' || line.empty())
       continue;
 
     std::istringstream lineParser(line);

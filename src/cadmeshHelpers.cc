@@ -102,8 +102,8 @@ cadmesh::ParseNodeSection(std::ifstream& nodeFileStream, G4double unitOfLength)
   G4String line;
   while (std::getline(nodeFileStream, line))
   {
-    // skip comments
-    if (line.front() == '#')
+    // skip comments & emtpy lines
+    if (line.front() == '#' || line.empty())
       continue;
 
     std::istringstream lineParser(line);
@@ -153,8 +153,8 @@ cadmesh::ParseNodeSection(std::ifstream& nodeFileStream, G4double unitOfLength)
   std::vector<G4ThreeVector> nodes;
   while (std::getline(nodeFileStream, line) && nodes.size() < nNodes)
   {
-    // skip comments
-    if (line.front() == '#')
+    // skip comments & emtpy lines
+    if (line.front() == '#' || line.empty())
       continue;
 
     std::istringstream lineParser(line);
